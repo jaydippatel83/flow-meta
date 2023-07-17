@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Flow Ad Network</title>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0"
+    />
+   
+    <style>
+      body {
+        font-family: Monospace;
+        background-color: #000;
+        color: #fff;
+        margin: 0px;
+        overflow: hidden;
+      }
+      #message {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translateX(-50%) translateY(-50%);
+        font-family: "Kavivanar", san-serif;
+        font-size: 40px;
+        width: 80%;
+        max-width: 280px;
+        padding: 15px 15px 50px 15px;
+        text-align: center;
+        display: none;
+        align-content: center;
+        justify-content: center;
+        background-color: aliceblue;
+        border: medium solid #3d455c;
+        border-radius: 20px;
+        color: #3d455c;
+        z-index: 99;
+      }
+      #message_ok {
+        position: absolute;
+        bottom: 10px;
+        padding: 10px 20px 10px 20px;
+        font-family: sans-serif;
+        font-size: 20px;
+        background-color: #3d455c;
+        color: #fff;
+        border-radius: 8px;
+        border: medium solid #696882;
+      }
+      #chat {
+        position: absolute;
+        width: 100%;
+        height: 40px;
+        display: none;
+        transition: all 0.5s;
+      }
+      form {
+        background: #000;
+        padding: 3px;
+        width: 100%;
+      }
+      form input {
+        border: 0;
+        padding: 10px;
+        width: 88%;
+        margin-right: 0.5%;
+      }
+      form button {
+        background: rgb(130, 224, 255);
+        border: none;
+        padding: 10px;
+      }
+      .logo {
+        position: absolute;
+        top: 50px;
+        right: 40px;
+      }
+      @media only screen and (max-width: 600px) {
+        .mapa {
+          width: 100px;
+          height: 50px;
+        }
+      }
+
+        @media only screen and (min-width: 601px) {
+          .mapa {
+            width: 100px;
+            height: 50px;
+          }
+        }
+
+    </style>
+  </head>
+
+  <body>
+    <section class="make-center" style="position: absolute;">
+
+      <button style="display: none open-room">Open Room</button>
+      <button style="display: none" id="join-room">Join Room</button>
+      <button style="display: none;    height: 50px;
+      width: 150px;
+      background: aquamarine;
+      box-shadow: none;
+      border: 1px solid black;
+      font-size: 17px;
+      font-weight: bold;" id="open-or-join-room">Open Audio Chat </button>
+
+      <div
+        id="room-urls"
+        style="
+          text-align: center;
+          display: none;
+          background: #f1eded;
+          margin: 15px -10px;
+          border: 1px solid rgb(189, 189, 189);
+          border-left: 0;
+          border-right: 0;
+        "
+      ></div>
+
+      <div id="audios-container"></div>
+    </section>
+   <a href="#" target="_blank"> <img id="logo" src="logo.png" class="logo" /></a>
+    <div
+      id="target"
+      style="
+        position: absolute;
+        width: 200px;
+        height: 100px;
+        right: 0;
+        bottom: 10px;
+      "
+    >
+    <img id='mapa' src="mapa.svg" class="map" width="200px" height="100px"/> 
+  </div>
+    <div id="message">
+      <p id="message_text"></p>
+      <button id="message_ok">OK</button>
+    </div>
+    <div id="chat" style="width: 40%">
+      <form id="msg-form" style="display: flex;" action="">
+        <input id="m" autocomplete="off" /><button>Send</button>
+      </form>
+    </div>
+    <div id="overlay"></div>
+    <script src="three.js"></script>
+    <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+
+    <script src="inflate.min.js"></script>
+    <script src="FBXLoader.js"></script>
+    <script src="GLTFLoader.js"></script>
+    <script src="Detector.js"></script>
+    <script src="toon3d.js"></script>
+    <script src="RTCMultiConnection.min.js"></script>
+    <script src="adapter.js"></script>
+    <link rel="stylesheet" href="getHTMLMediaElement.css" />
+    <script src="getHTMLMediaElement.js"></script> 
+    <script src="game.js"></script>
+
+  
+     <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        let map = document.getElementById("mapa");
+         let tar = document.getElementById("target");
+         let logo = document.getElementById("logo");
+
+        if (window.innerWidth < 500) {
+          tar.style.width = "100px";
+          logo.style.width = "100px";
+          logo.style.height = "50px";
+          tar.style.height = "50px";
+          map.style.height = "50px";
+          map.style.width = "100px";
+        } else {
+          tar.style.width = "200px";
+          tar.style.height = "100px";
+          map.style.height = "100px";
+          map.style.width = "200px";
+          logo.style.width = "280px";
+          logo.style.height = "80px";
+        }
+        const game = new Game();
+        window.game = game; //For debugging only
+        
+      });
+    </script>
+    <script>
+      // ......................................................
+      // .......................UI Code........................
+      // ......................................................
+
+      document.getElementById("open-or-join-room").onclick = function () {
+        disableInputButtons();
+        connection.openOrJoin(
+          sessionStorage.getItem("userId"),
+          function (isRoomExist, roomid) {
+            if (!isRoomExist) {
+              showRoomURL(roomid);
+            }
+          }
+        );
+      };
+
+      document.getElementById("join-room").onclick = function () {
+        disableInputButtons();
+        connection.join(sessionStorage.getItem("userIdJoin"),);
+      };
+
+      // ......................................................
+      // ..................RTCMultiConnection Code.............
+      // ......................................................
+
+      var connection = new RTCMultiConnection();
+
+      // by default, socket.io server is assumed to be deployed on your own URL
+      connection.socketURL = "/";
+
+      // comment-out below line if you do not have your own socket.io server
+      // connection.socketURL = 'https://rtcmulticonnection.herokuapp.com:443/';
+
+      connection.socketMessageEvent = "audio-conference-demo";
+
+      connection.session = {
+        audio: true,
+        video: false,
+      };
+
+      connection.mediaConstraints = {
+        audio: true,
+        video: false,
+      };
+
+      connection.sdpConstraints.mandatory = {
+        OfferToReceiveAudio: true,
+        OfferToReceiveVideo: false,
+      };
+
+      connection.iceServers = [
+        {
+          urls: [
+            "stun:stun.l.google.com:19302",
+            "stun:stun1.l.google.com:19302",
+            "stun:stun2.l.google.com:19302",
+            "stun:stun.l.google.com:19302?transport=udp",
+          ],
+        },
+      ];
+
+      connection.audiosContainer = document.getElementById("audios-container");
+      connection.onstream = function (event) {
+        var width = parseInt(connection.audiosContainer.clientWidth / 2) - 20;
+        var mediaElement = getHTMLMediaElement(event.mediaElement, {
+          title: event.userid,
+          buttons: ["full-screen"],
+          width: width,
+          showOnMouseEnter: false,
+        });
+
+        connection.audiosContainer.appendChild(mediaElement);
+
+        setTimeout(function () {
+          mediaElement.media.play();
+        }, 5000);
+
+        mediaElement.id = event.streamid;
+      };
+
+      connection.onstreamended = function (event) {
+        var mediaElement = document.getElementById(event.streamid);
+        if (mediaElement) {
+          mediaElement.parentNode.removeChild(mediaElement);
+        }
+      };
+
+      function disableInputButtons() {
+        document.getElementById("open-or-join-room").disabled = true;
+        document.getElementById("join-room").disabled = true;
+      }
+
+      // ......................................................
+      // ......................Handling Room-ID................
+      // ......................................................
+
+      function showRoomURL(roomid) {
+        var roomHashURL = "#" + roomid;
+        var roomQueryStringURL = "?roomid=" + roomid;
+
+        var html = "<h2>Unique URL for your room:</h2><br>";
+
+        html +=
+          'Hash URL: <a href="' +
+          roomHashURL +
+          '" target="_blank">' +
+          roomHashURL +
+          "</a>";
+        html += "<br>";
+        html +=
+          'QueryString URL: <a href="' +
+          roomQueryStringURL +
+          '" target="_blank">' +
+          roomQueryStringURL +
+          "</a>";
+
+        var roomURLsDiv = document.getElementById("room-urls");
+        roomURLsDiv.innerHTML = html;
+
+        roomURLsDiv.style.display = "block";
+      }
+
+      (function () {
+        var params = {},
+          r = /([^&=]+)=?([^&]*)/g;
+
+        function d(s) {
+          return decodeURIComponent(s.replace(/\+/g, " "));
+        }
+        var match,
+          search = window.location.search;
+        while ((match = r.exec(search.substring(1))))
+          params[d(match[1])] = d(match[2]);
+        window.params = params;
+      })();
+
+      var roomid = "";
+      if (localStorage.getItem(connection.socketMessageEvent)) {
+        roomid = localStorage.getItem(connection.socketMessageEvent);
+      } else {
+        roomid = connection.token();
+      }
+    
+
+      var hashString = location.hash.replace("#", "");
+      if (hashString.length && hashString.indexOf("comment-") == 0) {
+        hashString = "";
+      }
+
+      var roomid = params.roomid;
+      if (!roomid && hashString.length) {
+        roomid = hashString;
+      }
+
+      if (roomid && roomid.length) {
+        localStorage.setItem(connection.socketMessageEvent, roomid);
+
+        // auto-join-room
+        (function reCheckRoomPresence() {
+          connection.checkPresence(roomid, function (isRoomExist) {
+            if (isRoomExist) {
+              connection.join(roomid);
+              return;
+            }
+
+            setTimeout(reCheckRoomPresence, 5000);
+          });
+        })();
+
+      }
+    </script>
+  </body>
+</html>
